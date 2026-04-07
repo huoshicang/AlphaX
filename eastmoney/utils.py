@@ -1,0 +1,63 @@
+import pandas as pd
+import os  # 新增：导入os模块处理文件/目录
+
+
+def convert_to_secid(code: str) -> str:
+    """
+    股票代码转换成东方财富 secid 格式
+    """
+    code = code.strip()
+    if code.startswith(("0", "3")):
+        return f"0.{code}"
+    elif code.startswith(("6", "5", "9")):
+        return f"1.{code}"
+    else:
+        raise ValueError(f"不支持的股票代码: {code}")
+
+
+def to_eastmoney_secid(code: str) -> str:
+    """
+    股票代码转换成东方财富 secid 格式
+    """
+    code = code.strip()
+    if code.startswith(("0", "3")):
+        return f"sz.{code}"
+    elif code.startswith(("6", "5", "9")):
+        return f"sh.{code}"
+    else:
+        raise ValueError(f"不支持的股票代码: {code}")
+
+
+def kline_to_dataframe(klines: list, code: str) -> pd.DataFrame:
+    """
+    把东方财富原始K线数据转为标准 pandas DataFrame
+    字段、顺序、类型完全对齐行业规范
+    """
+    if not klines:
+        return pd.DataFrame()
+
+    temp_df = pd.DataFrame([item.split(",") for item in klines])
+    temp_df["股票代码"] = code
+    temp_df.columns = [
+        "日期", "开盘", "收盘", "最高", "最低",
+        "成交量", "成交额", "振幅", "涨跌幅", "涨跌额", "换手率", "股票代码"
+    ]
+
+    # 类型转换
+    temp_df["日期"] = pd.to_datetime(temp_df["日期"], errors="coerce").dt.date
+    temp_df["开盘"] = pd.to_numeric(temp_df["开盘"], errors="coerce")
+    temp_df["收盘"] = pd.to_numeric(temp_df["收盘"], errors="coerce")
+    temp_df["最高"] = pd.to_numeric(temp_df["最高"], errors="coerce")
+    temp_df["最低"] = pd.to_numeric(temp_df["最低"], errors="coerce")
+    temp_df["成交量"] = pd.to_numeric(temp_df["成交量"], errors="coerce")
+    temp_df["成交额"] = pd.to_numeric(temp_df["成交额"], errors="coerce")
+    temp_df["振幅"] = pd.to_numeric(temp_df["振幅"], errors="coerce")
+    temp_df["涨跌幅"] = pd.to_numeric(temp_df["涨跌幅"], errors="coerce")
+    temp_df["涨跌额"] = pd.to_numeric(temp_df["涨跌额"], errors="coerce")
+    temp_df["换手率"] = pd.to_numeric(temp_df["换手率"], errors="coerce")
+
+    # 最终列顺序
+    return temp_df[[
+        "日期", "股票代码", "开盘", "收盘", "最高",
+        "最低", "成交量", "成交额", "振幅", "涨跌幅", "涨跌额", "换手率"
+    ]]
