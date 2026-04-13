@@ -1,0 +1,10 @@
+# CSV数据存储配置
+# 数据文件夹路径，可以是相对路径或绝对路径
+# 相对路径是相对于此配置文件的路径
+# 绝对路径示例：D:/data/project_data 或 /home/user/data
+
+data_dir: "../data"
+
+# 其他可选配置
+encoding: "gbk"
+index: false

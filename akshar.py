@@ -8,6 +8,8 @@ pd.set_option('display.width', None)
 
 index_stock_cons_df = ak.index_stock_cons(symbol="000510")
 
+print(index_stock_cons_df)
+
 for i in index_stock_cons_df['品种代码'].to_list():
     df = ak.stock_zh_a_hist(
         symbol=i,       # 6位股票代码，不带.SH/.SZ

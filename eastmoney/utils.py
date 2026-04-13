@@ -44,7 +44,7 @@ def kline_to_dataframe(klines: list, code: str) -> pd.DataFrame:
     ]
 
     # 类型转换
-    temp_df["日期"] = pd.to_datetime(temp_df["日期"], errors="coerce").dt.date
+    temp_df["日期"] = pd.to_datetime(temp_df["日期"], errors="coerce").dt.strftime("%Y/%m/%d")
     temp_df["开盘"] = pd.to_numeric(temp_df["开盘"], errors="coerce")
     temp_df["收盘"] = pd.to_numeric(temp_df["收盘"], errors="coerce")
     temp_df["最高"] = pd.to_numeric(temp_df["最高"], errors="coerce")
@@ -56,8 +56,14 @@ def kline_to_dataframe(klines: list, code: str) -> pd.DataFrame:
     temp_df["涨跌额"] = pd.to_numeric(temp_df["涨跌额"], errors="coerce")
     temp_df["换手率"] = pd.to_numeric(temp_df["换手率"], errors="coerce")
 
+    # 添加自定义列，默认值为 "-"
+    temp_df["zsqs"] = "-"
+    temp_df["MA60"] = "-"
+    temp_df["EMA13"] = "-"
+    temp_df["zxdk"] = "-"
+
     # 最终列顺序
     return temp_df[[
         "日期", "股票代码", "开盘", "收盘", "最高",
-        "最低", "成交量", "成交额", "振幅", "涨跌幅", "涨跌额", "换手率"
+        "最低", "成交量", "成交额", "振幅", "涨跌幅", "涨跌额", "换手率", "zsqs", "MA60", "EMA13", "zxdk"
     ]]
