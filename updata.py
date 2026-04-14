@@ -85,9 +85,9 @@ def update_stock_data():
         
         df_with_indicators = indicators(merged_df)
         
-        last_row = df_with_indicators.iloc[[-1]]
+        new_rows = df_with_indicators.tail(len(new_data))
         
-        if append_row_csv(last_row, filename):
+        if append_row_csv(new_rows, filename):
             log.info(f"{stock_code} 更新成功")
             updated_count += 1
         else:
