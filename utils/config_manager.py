@@ -22,7 +22,7 @@ class ConfigManager:
         if config_file is None:
             # 默认配置文件路径：当前模块所在目录的config.yaml
             self.config_file = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 
+                os.path.dirname(os.path.abspath(__file__)),
                 "config.yaml"
             )
         else:

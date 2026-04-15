@@ -3,8 +3,8 @@ from typing import Optional, cast
 
 import pandas as pd
 
-from .config_manager import get_data_dir
-from .logger import log
+from utils.config_manager import get_data_dir
+from utils.logger import log
 
 ENCODING = 'gbk'
 

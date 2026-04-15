@@ -42,6 +42,7 @@ def indicators(df):
     df['EMA13'] = df['收盘'].transform(lambda x: EMA(x, 13)).round(2)
 
     # 3. ✅ 知行多空线：(MA14+MA28+MA57+MA114)/4
+    # 3. ✅ 知行多空线：(MA14+MA28+MA57+MA114)/4
     ma14 = df['收盘'].transform(lambda x: MA(x, M1))
     ma28 = df['收盘'].transform(lambda x: MA(x, M2))
     ma57 = df['收盘'].transform(lambda x: MA(x, M3))

@@ -2,8 +2,11 @@ import os
 import re
 from datetime import datetime, timedelta
 import pandas as pd
-from eastmoney import indicators, read_csv, append_row_csv, log, get_day, get_data_dir
-
+from utils.indicators import indicators
+from get_stock_dfcf import get_stock_dfcf
+from utils.csv import read_csv, append_row_csv
+from utils.logger import log
+from utils.config_manager import get_data_dir
 
 # 获取最后N行数据
 TAIL = 114
@@ -36,7 +39,7 @@ def get_last_date_plus_one(df):
     return next_date.strftime('%Y%m%d')
 
 
-def update_stock_data():
+def update_stock_dfcf():
     """更新所有股票数据"""
     if not check_time():
         return
@@ -73,7 +76,7 @@ def update_stock_data():
         
         log.info(f"{stock_code} 最后日期: {last_114_rows.iloc[-1]['日期']}, 起始日期: {begin_date}, 结束日期: {current_date}")
         
-        new_data = get_day(stock_code, begin_date=begin_date, end_date=current_date, to_df=True)
+        new_data = get_stock_dfcf(stock_code, begin_date=begin_date, end_date=current_date, to_df=True)
         
         if new_data is None or len(new_data) == 0:
             log.info(f"{stock_code} 没有新数据")
@@ -97,4 +100,4 @@ def update_stock_data():
 
 
 if __name__ == '__main__':
-    update_stock_data()
+    update_stock_dfcf()
