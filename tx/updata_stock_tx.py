@@ -52,7 +52,6 @@ def get_last_date_plus_one(df):
 
 
 def updata_stock_tx(
-        code: str,  # 股票代码
         period: KlinePeriod = KlinePeriod.day,  # K线周期，默认日线
         adjust: AdjustType = AdjustType.qfq,  # 复权类型，默认前复权
         begin_date: str = datetime.now().strftime(date_format),  # 开始日期，默认当天
@@ -61,6 +60,7 @@ def updata_stock_tx(
 ):
     """
     获取腾讯股票数据
+    禁止更新多天！！！
 
     Args:
         code: 股票代码
@@ -86,7 +86,9 @@ def updata_stock_tx(
     for filename in os.listdir(data_dir):
         if not filename.endswith('.csv'):
             continue
+
         stock_code = extract_stock_code(filename)
+
         if not stock_code:
             log.debug(f"跳过非股票代码文件: {filename}")
             continue
@@ -111,7 +113,7 @@ def updata_stock_tx(
             f"{stock_code} 最后日期: {last_114_rows.iloc[-1]['日期']}, 起始日期: {begin_date}, 结束日期: {end_date}")
 
         # 将股票代码转换为东方财富格式并移除点号
-        symbol = to_eastmoney_secid(code).replace('.', '')
+        symbol = to_eastmoney_secid(stock_code).replace('.', '')
 
         # 计算日期范围和交易日数量
         begin_date, end_date, trade_days = compute_date(begin_date, end_date)
@@ -140,14 +142,14 @@ def updata_stock_tx(
 
         # 重命名列名
         new_data.rename(
-            columns={0: '日期', 1: '开盘', 2: '收盘', 3: '最高', 4: '最低', 5: '金额', 6: '空1', 7: '空2', 8: '成交量',
-                     9: '空3', }, inplace=True)
+            columns={0: '日期', 1: '开盘', 2: '收盘', 3: '最高', 4: '最低', 5: '金额', 6: '空', 7: '空', 8: '成交量',
+                     9: '空', 10: "空" }, inplace=True)
 
         # 删除无用的列
-        new_data.drop(columns=['空1', '空2', '空3'], inplace=True)
+        new_data.drop(columns=['空'], inplace=True)
 
         # 添加股票代码列
-        new_data["股票代码"] = code
+        new_data["股票代码"] = stock_code
 
         # 合并数据
         merged_df = pd.concat([last_114_rows, new_data], ignore_index=True)
@@ -171,4 +173,4 @@ def updata_stock_tx(
 
 if __name__ == '__main__':
     # 测试函数
-    updata_stock_tx("300502", begin_date="2026-04-15", end_date="2026-04-15")
+    updata_stock_tx()

@@ -71,6 +71,10 @@ def compute_date(begin_date, end_date):
     begin_date = normalize_date(begin_date)
     end_date = normalize_date(end_date)
 
+    # 如果begin_date = end_date 返回 "" "" 1
+    if begin_date == end_date:
+        return "", "", 0
+
     # 转换日期格式
     begin = datetime.strptime(begin_date, date_format).date()
     end = datetime.strptime(end_date, date_format).date()
