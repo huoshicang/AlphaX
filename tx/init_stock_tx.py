@@ -69,7 +69,6 @@ def init_stock_tx(
     tqdm = get_tqdm()
 
     # 遍历年份范围，逐年获取K线数据
-    # leave=False表示进度条完成后不保留显示
     for year in tqdm(range(range_start, range_end), leave=False, desc=f"获取{code} {period} {adjust} 数据"):
         # 构建API请求参数
         params = {

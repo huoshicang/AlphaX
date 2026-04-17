@@ -1,20 +1,20 @@
 # 导入所需模块
+import json
 import os
 import re
+from datetime import datetime, timedelta  # 导入日期时间模块
 
+import pandas as pd  # 导入数据分析库
+import requests  # 导入网络请求库
 
 from tx.compute_date import compute_date  # 导入日期计算函数
-from tx.enums import KlinePeriod, AdjustType
+from tx.enums import AdjustType, KlinePeriod
 from tx.gen_random_same_length import gen_random_same_length
 from utils.config_manager import get_data_dir
-from utils.transition_secid import to_eastmoney_secid  # 导入股票代码转换函数
+from utils.csv import append_row_csv, read_csv
+from utils.indicators import indicators
 from utils.logger import log
-from utils.csv import read_csv, append_row_csv
-
-import json
-import requests  # 导入网络请求库
-import pandas as pd  # 导入数据分析库
-from datetime import datetime, timedelta# 导入日期时间模块
+from utils.transition_secid import to_eastmoney_secid  # 导入股票代码转换函数
 
 # 腾讯股票数据API地址
 url = "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get"
@@ -48,7 +48,8 @@ def get_last_date_plus_one(df):
     last_date_str = last_row['日期']
     last_date = pd.to_datetime(last_date_str)
     next_date = last_date + timedelta(days=1)
-    return next_date.strftime('%Y%m%d')
+    return next_date.strftime(date_format)
+
 
 def updata_stock_tx(
         code: str,  # 股票代码
@@ -80,13 +81,11 @@ def updata_stock_tx(
     data_dir = get_data_dir()
     log.info(f"数据目录: {data_dir}")
 
-    current_date = datetime.now().strftime('%Y%m%d')
     updated_count = 0
 
     for filename in os.listdir(data_dir):
         if not filename.endswith('.csv'):
             continue
-
         stock_code = extract_stock_code(filename)
         if not stock_code:
             log.debug(f"跳过非股票代码文件: {filename}")
@@ -104,11 +103,12 @@ def updata_stock_tx(
             continue
 
         last_114_rows = df
+
         begin_date = get_last_date_plus_one(last_114_rows)
+        end_date = datetime.now().strftime(date_format)
 
         log.info(
-            f"{stock_code} 最后日期: {last_114_rows.iloc[-1]['日期']}, 起始日期: {begin_date}, 结束日期: {current_date}")
-
+            f"{stock_code} 最后日期: {last_114_rows.iloc[-1]['日期']}, 起始日期: {begin_date}, 结束日期: {end_date}")
 
         # 将股票代码转换为东方财富格式并移除点号
         symbol = to_eastmoney_secid(code).replace('.', '')
@@ -132,25 +132,40 @@ def updata_stock_tx(
 
         # 根据复权类型选择对应的数据
         if "day" in data_json.keys():
-            df = pd.DataFrame(data_json["day"])
+            new_data = pd.DataFrame(data_json["day"])
         elif "hfqday" in data_json.keys():
-            df = pd.DataFrame(data_json["hfqday"])
+            new_data = pd.DataFrame(data_json["hfqday"])
         else:
-            df = pd.DataFrame(data_json["qfqday"])
+            new_data = pd.DataFrame(data_json["qfqday"])
 
         # 重命名列名
-        df.rename(
+        new_data.rename(
             columns={0: '日期', 1: '开盘', 2: '收盘', 3: '最高', 4: '最低', 5: '金额', 6: '空1', 7: '空2', 8: '成交量',
                      9: '空3', }, inplace=True)
 
         # 删除无用的列
-        df.drop(columns=['空1', '空2', '空3'], inplace=True)
+        new_data.drop(columns=['空1', '空2', '空3'], inplace=True)
 
         # 添加股票代码列
-        df["股票代码"] = code
+        new_data["股票代码"] = code
 
-        # 返回处理后的数据
-        return df
+        # 合并数据
+        merged_df = pd.concat([last_114_rows, new_data], ignore_index=True)
+
+        # 计算指标
+        df_with_indicators = indicators(merged_df)
+
+        # 提取新数据
+        new_rows = df_with_indicators.tail(len(new_data))
+
+        # 保存数据
+        if append_row_csv(new_rows, filename):
+            log.info(f"{stock_code} 更新成功")
+            updated_count += 1
+        else:
+            log.error(f"{stock_code} 更新失败")
+
+    log.info(f"更新完成，共更新 {updated_count} 只股票")
     return None
 
 
