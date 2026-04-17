@@ -39,7 +39,7 @@ class LoggerConfig:
         # 控制台输出格式
         console_format = (
             "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-            "<level>{level: <8}</level> | "
+            "<level>{level}</level> | "
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
             "<level>{message}</level>"
         )
@@ -47,7 +47,7 @@ class LoggerConfig:
         # 文件输出格式
         file_format = (
             "{time:YYYY-MM-DD HH:mm:ss} | "
-            "{level: <8} | "
+            "{level} | "
             "{name}:{function}:{line} | "
             "{message}"
         )

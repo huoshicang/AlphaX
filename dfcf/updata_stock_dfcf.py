@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timedelta
 import pandas as pd
 from utils.indicators import indicators
-from get_stock_dfcf import get_stock_dfcf
+from dfcf.get_stock_dfcf import get_stock_dfcf
 from utils.csv import read_csv, append_row_csv
 from utils.logger import log
 from utils.config_manager import get_data_dir
