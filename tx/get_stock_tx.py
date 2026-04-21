@@ -22,4 +22,4 @@ def get_stock_tx(
     if is_init:
         return init_stock_tx(code, period, adjust, begin_date, end_date, timeout)
 
-    return updata_stock_tx(code, period, adjust, begin_date, end_date, timeout)
+    return updata_stock_tx(period, adjust, begin_date, end_date, timeout)

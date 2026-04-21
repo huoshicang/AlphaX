@@ -59,11 +59,11 @@ def normalize_date(date_str):
 def compute_date(begin_date, end_date):
     """
     计算两个日期之间的交易日数量
-    
+
     Args:
         begin_date: 开始日期字符串，格式为 "%Y-%m-%d"
         end_date: 结束日期字符串，格式为 "%Y-%m-%d"
-    
+
     Returns:
         tuple: (调整后的开始交易日, 调整后的结束交易日, 交易日数量)
     """
@@ -82,18 +82,18 @@ def compute_date(begin_date, end_date):
     # 验证日期范围
     if begin > end:
         raise ValueError("开始日期不能晚于结束日期")
-    
+
     # 获取交易日数据
     trade_dates, trade_dates_set = get_trade_dates()
-    
+
     # 调整开始日期为交易日
     while begin not in trade_dates_set:
         begin += timedelta(days=1)
-    
+
     # 调整结束日期为交易日
     while end not in trade_dates_set:
         end -= timedelta(days=1)
-    
+
     # 计算交易日数量
     begin_idx = trade_dates.index(begin)
     end_idx = trade_dates.index(end)
@@ -103,4 +103,4 @@ def compute_date(begin_date, end_date):
 
 
 if __name__ == "__main__":
-    print(compute_date("2010-01-01", "2026-04-16"))
+    print(compute_date("2026-04-18", "2026-04-25"))

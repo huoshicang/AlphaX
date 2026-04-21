@@ -3,10 +3,26 @@ from typing import Optional, cast
 
 import pandas as pd
 
-from utils.config_manager import get_data_dir
 from utils.logger import log
 
 ENCODING = 'gbk'
+
+
+def get_data_dir() -> str:
+    """
+    获取数据目录路径
+    
+    Returns:
+        数据目录的绝对路径
+    """
+    # 项目根目录：utils目录的父目录
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # 固定数据目录：项目根目录下的data目录
+    data_path = os.path.join(project_root, 'data')
+    # 自动创建数据文件夹
+    os.makedirs(data_path, exist_ok=True)
+    log.debug(f"数据目录路径: {data_path}")
+    return data_path
 
 
 def get_file_path(file_name: str) -> str:
