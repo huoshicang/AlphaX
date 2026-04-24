@@ -7,19 +7,20 @@ import os
 import sys
 from datetime import datetime
 from loguru import logger
+from pathlib import Path
 
 
 class LoggerConfig:
     """日志配置类"""
     
-    def __init__(self, log_dir: str = "logs"):
+    def __init__(self):
         """
         初始化日志配置
-        
-        Args:
-            log_dir: 日志目录路径
         """
-        self.log_dir = log_dir
+
+        project_root = Path(__file__).resolve().parent.parent
+
+        self.log_dir = str(project_root / "logs")
         self._setup_logger()
     
     def _setup_logger(self):

@@ -35,18 +35,18 @@ def indicators(df):
     M1, M2, M3, M4 = 14, 28, 57, 114
 
     # 1. 知行短期趋势线：EMA(EMA(收盘,10),10)
-    df['zsqs'] = df['收盘'].transform(lambda x: EMA(EMA(x, 10), 10)).round(2)
+    df['zsqs'] = df['收盘_hfq'].transform(lambda x: EMA(EMA(x, 10), 10)).round(2)
 
     # 2. 备用均线：60日MA、13日EMA
-    df['MA60'] = df['收盘'].transform(lambda x: MA(x, 60)).round(2)
-    df['EMA13'] = df['收盘'].transform(lambda x: EMA(x, 13)).round(2)
+    df['MA60'] = df['收盘_hfq'].transform(lambda x: MA(x, 60)).round(2)
+    df['EMA13'] = df['收盘_hfq'].transform(lambda x: EMA(x, 13)).round(2)
 
     # 3. ✅ 知行多空线：(MA14+MA28+MA57+MA114)/4
     # 3. ✅ 知行多空线：(MA14+MA28+MA57+MA114)/4
-    ma14 = df['收盘'].transform(lambda x: MA(x, M1))
-    ma28 = df['收盘'].transform(lambda x: MA(x, M2))
-    ma57 = df['收盘'].transform(lambda x: MA(x, M3))
-    ma114 = df['收盘'].transform(lambda x: MA(x, M4))
+    ma14 = df['收盘_hfq'].transform(lambda x: MA(x, M1))
+    ma28 = df['收盘_hfq'].transform(lambda x: MA(x, M2))
+    ma57 = df['收盘_hfq'].transform(lambda x: MA(x, M3))
+    ma114 = df['收盘_hfq'].transform(lambda x: MA(x, M4))
     df['zxdk'] = ((ma14 + ma28 + ma57 + ma114) / 4).round(2)
 
     # 填充空值为 "-"

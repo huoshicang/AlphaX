@@ -11,7 +11,7 @@ date_format = "%Y-%m-%d"
 
 
 def get_stock_tx(
-        code: str,  # 股票代码
+        code: str = "",  # 股票代码
         period: KlinePeriod = KlinePeriod.day,  # K线周期，默认日线
         adjust: AdjustType = AdjustType.qfq,  # 复权类型，默认前复权
         begin_date: str = datetime.now().strftime(date_format),  # 开始日期，默认当天

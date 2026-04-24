@@ -3,3 +3,5 @@ data
 .idea
 *.log
 *.xml
+*.csv
+*.html

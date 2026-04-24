@@ -1,150 +1,141 @@
-# 导入所需模块
 import json
-from datetime import datetime  # 导入日期时间模块
+from datetime import datetime
 
-import pandas as pd  # 导入数据分析库
-import requests  # 导入网络请求库
+import pandas as pd
+import requests
 
-from tx.enums import AdjustType, KlinePeriod  # 导入调整类型和K线周期枚举
-from tx.bar import get_tqdm  # 导入进度条工具
+from tx.bar import get_tqdm
+from tx.enums import AdjustType, KlinePeriod
 from tx.gen_random_same_length import gen_random_same_length
-from utils.transition_secid import to_eastmoney_secid  # 导入股票代码转换函数
-
-# 腾讯股票数据API地址
-url = "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get"
-# 日期格式定义
-date_format = "%Y-%m-%d"
+from utils.csv import overwrite_csv
+from utils.indicators import indicators
+from utils.transition_secid import to_eastmoney_secid
 
 
-def init_stock_tx(
-        code: str,  # 股票代码
-        period: KlinePeriod = KlinePeriod.day,  # K线周期，默认日线
-        adjust: AdjustType = AdjustType.qfq,  # 复权类型，默认前复权
-        begin_date: str = datetime.now().strftime(date_format),  # 开始日期，默认当天
-        end_date: str = datetime.now().strftime(date_format),  # 结束日期，默认当天
-        timeout: float = 10.0,  # 请求超时时间，默认10秒
-):
-    """
-    获取腾讯股票历史K线数据
+URL = "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get"
+DATE_FMT = "%Y-%m-%d"
 
-    该函数通过腾讯财经API获取指定股票的历史K线数据，支持不同周期和复权方式。
-    数据会按年份分段获取，然后合并成完整的DataFrame。
+COL_INDEX_MAP = {
+    0: "日期", 1: "开盘", 2: "收盘", 3: "最高",
+    4: "最低", 5: "金额", 8: "成交量"
+}
 
-    Args:
-        code: 股票代码，如 "300502" 或 "sh600000"
-        period: K线周期，可选值包括日线、周线、月线等（来自KlinePeriod枚举）
-        adjust: 复权类型，可选前复权(qfq)、后复权(hfq)或不复权（来自AdjustType枚举）
-        begin_date: 开始日期，格式为 "YYYY-MM-DD"，默认为当天
-        end_date: 开始日期，格式为 "YYYY-MM-DD"，默认为当天
-        timeout: HTTP请求超时时间（秒），默认10秒
 
-    Returns:
-        DataFrame: 包含股票K线数据的DataFrame，列包括：
-                   - 股票代码: 股票标识
-                   - 日期: 交易日期
-                   - 开盘: 开盘价
-                   - 收盘: 收盘价
-                   - 最高: 最高价
-                   - 最低: 最低价
-                   - 金额: 成交金额
-                   - 成交量: 成交量
+# ==================== 请求 ====================
 
-    Example:
-        >>> df = init_stock_tx("300502", begin_date="2020-01-01", end_date="2024-12-31")
-        >>> print(df.head())
-    """
-    # 将股票代码转换为东方财富格式并移除点号分隔符
-    # 例如: "sh600000" -> "sh600000", "sz000001" -> "sz000001"
-    symbol = to_eastmoney_secid(code).replace('.', '')
+def fetch_year(symbol, period, year, adjust, timeout) -> pd.DataFrame:
+    params = {
+        "_var": f"kline_{period}{adjust}",
+        "param": f"{symbol},{period},{year}-01-01,{year+1}-12-31,640,{adjust}",
+        "r": f"0.{gen_random_same_length()}",
+    }
 
-    # 提取开始年份和结束年份
-    # 结束年份+1是为了确保覆盖完整的时间范围
-    range_start = int(begin_date[:4])  # 提取开始日期的年份部分
-    range_end = int(end_date[:4]) + 1  # 提取结束日期的年份部分并加1
+    try:
+        r = requests.get(URL, params=params, timeout=timeout)
+        r.raise_for_status()
+        data = json.loads(r.text[r.text.find("={") + 1:])
+        raw = data.get("data", {}).get(symbol, {})
+    except Exception as e:
+        print(f"{year}-{adjust}失败: {e}")
+        return pd.DataFrame()
 
-    # 初始化空的DataFrame用于存储所有年份的数据
-    df = pd.DataFrame()
+    for k in ("day", "hfqday", "qfqday"):
+        if k in raw:
+            df = pd.DataFrame(raw[k])
+            break
+    else:
+        return pd.DataFrame()
 
-    # 获取进度条对象，用于显示数据获取进度
-    tqdm = get_tqdm()
+    if df.empty:
+        return df
 
-    # 遍历年份范围，逐年获取K线数据
-    for year in tqdm(range(range_start, range_end), leave=False, desc=f"获取{code} {period} {adjust} 数据"):
-        # 构建API请求参数
-        params = {
-            "_var": f"kline_{period}{adjust}",  # 回调变量名，根据周期和复权类型动态生成
-            "param": f"{symbol},{period},{year}-01-01,{year + 1}-12-31,640,{adjust}",  # 请求参数：股票代码、周期、起止日期、数据条数、复权类型
-            "r": f"0.{gen_random_same_length()}",
-        }
-
-        # 发送HTTP GET请求获取数据
-        r = requests.get(url, params=params, timeout=timeout)
-        data_text = r.text
-
-        # 解析JSON数据
-        data_json = json.loads(data_text[data_text.find("={") + 1:]).get("data", {}).get(symbol, {})
-
-        # 根据复权类型选择对应的数据字段
-        # 优先级：普通日线 > 后复权日线 > 前复权日线
-        if "day" in data_json.keys():
-            # 不复权的日线数据
-            temp_df = pd.DataFrame(data_json["day"])
-        elif "hfqday" in data_json.keys():
-            # 后复权的日线数据
-            temp_df = pd.DataFrame(data_json["hfqday"])
-        else:
-            # 前复权的日线数据（默认）
-            temp_df = pd.DataFrame(data_json["qfqday"])
-
-        # 将当前年份的数据合并到总DataFrame中
-        df = pd.concat([df, temp_df], ignore_index=True)
-
-    # 在DataFrame的第一列插入股票代码列
-    df.insert(0, "股票代码", code)
-
-    # 重命名列名为中文描述
-    # 0: 日期, 1: 开盘价, 2: 收盘价, 3: 最高价, 4: 最低价 5: 成交金额, 6-7: 预留字段, 8: 成交量, 9: 预留字段
-    df.rename(
-        columns={
-            0: '日期',
-            1: '开盘',
-            2: '收盘',
-            3: '最高',
-            4: '最低',
-            5: '金额',
-            6: '空1',
-            7: '空2',
-            8: '成交量',
-            9: '空3'
-        },
-        inplace=True
-    )
-
-    # 删除无用的预留列（空1、空2、空3）
-    df.drop(columns=['空1', '空2', '空3'], inplace=True)
-
-    # 去除重复的行数据，并重置索引
-    df.drop_duplicates(inplace=True, ignore_index=True)
-
-    # 将日期列转换为datetime类型，并设置为索引
-    # errors="coerce"表示无法转换的值会被设为NaT
-    df.index = pd.to_datetime(df["日期"], errors="coerce")
-
-    # 按日期索引排序，确保时间顺序正确
-    df.sort_index(inplace=True)
-
-    # 根据用户指定的日期范围筛选数据
-    df = df[begin_date:end_date]
-
-    # 重置索引，drop=True表示丢弃旧索引
-    df.reset_index(inplace=True, drop=True)
-
-    # 返回处理完成的股票K线数据
+    df = df[list(COL_INDEX_MAP)].rename(columns=COL_INDEX_MAP)
+    df["日期"] = pd.to_datetime(df["日期"], errors="coerce")
+    df = df.dropna(subset=["日期"]).set_index("日期")
     return df
 
 
+# ==================== 主逻辑 ====================
+
+def init_stock_tx(
+        code: str,
+        period: KlinePeriod = KlinePeriod.day,
+        adjust: AdjustType = AdjustType.qfq,
+        begin_date: str = datetime.now().strftime(DATE_FMT),
+        end_date: str = datetime.now().strftime(DATE_FMT),
+        timeout: float = 10.0,
+        include_bfq: bool = True,
+):
+    symbol = to_eastmoney_secid(code).replace(".", "")
+
+    t_begin = pd.to_datetime(begin_date, errors="coerce")
+    t_end = pd.to_datetime(end_date, errors="coerce")
+    if pd.isna(t_begin) or pd.isna(t_end):
+        raise ValueError("日期格式错误")
+
+    years = range(t_begin.year, t_end.year + 1)
+
+    adjusts = [AdjustType.qfq, AdjustType.hfq] if include_bfq else [adjust]
+    frames = {a: [] for a in adjusts}
+
+    tqdm = get_tqdm()
+
+    for y in tqdm(years, desc=f"{code}-{period}", leave=False):
+        for a in adjusts:
+            df = fetch_year(symbol, period, y, a, timeout)
+            if not df.empty:
+                frames[a].append(df)
+
+    parts = []
+    for a, dfs in frames.items():
+        if not dfs:
+            continue
+
+        df = pd.concat(dfs)
+        suf = f"_{a}"
+
+        df = df.rename(columns={
+            "开盘": f"开盘{suf}",
+            "收盘": f"收盘{suf}",
+            "最高": f"最高{suf}",
+            "最低": f"最低{suf}",
+            "金额": f"金额{suf}",
+            "成交量": f"成交量{suf}"
+        })
+
+        parts.append(df)
+
+    if not parts:
+        return pd.DataFrame()
+
+    # === 合并 ===
+    df = parts[0]
+    for other in parts[1:]:
+        df = df.join(other, how="outer")
+
+    # === 收尾整理 ===
+    df = (
+        df.sort_index()
+        .drop_duplicates()
+        .reset_index(names="日期")
+    )
+
+    df.insert(0, "股票代码", code)
+    df = df.loc[:, ~df.columns.duplicated()]
+
+    # 金额/成交量放最后
+    tail_cols = [c for c in ("金额_qfq", "成交量_qfq", "金额_hfq", "成交量_hfq") if c in df.columns]
+
+    return df[[c for c in df.columns if c not in tail_cols] + tail_cols]
+
+
+# ==================== 示例 ====================
+
 if __name__ == '__main__':
-    # 测试代码：获取股票代码为300502的历史数据
-    # 时间范围：2010-01-01 至 2026-04-15
-    # 使用默认的日线周期和前复权方式
-    init_stock_tx("300502", begin_date="2010-01-01", end_date="2026-04-15")
+    df = init_stock_tx(
+        code="300308",
+        begin_date="20100101",
+        end_date="20260424",
+    )
+
+    overwrite_csv(indicators(df), "1-300308.csv")
